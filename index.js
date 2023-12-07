@@ -5,33 +5,46 @@ import http from 'http';
 import cors from 'cors';
 import { PORT } from './config.js';
 
-// Prueba cambiando origin
 const app = express();
-
 const server = http.createServer(app);
-
-// por medio del socket estoy dando permisos al origin de mi cliente
 const io = new SocketServer(server, {
   cors: {
     origin: "*",
   }
 });
 
-// Usar middlewares
 app.use(cors());
 app.use(morgan('dev'));
 
-// método que puede ejecutarse eventualmente
-io.on('connection', (socket) => {  
-  // console.log(`user id: ${socket.id}`);
-  // Cuando el socket reciba un evento
-  // El parámetro msg ya es el mensaje que llega
+
+
+// Manejar conexiones de Socket.IO
+io.on('connection', (socket) => {
+  console.log('Nuevo cliente conectado');
+  socket.setMaxListeners(50);
+  // Manejar eventos de notificación
+  io.on('connection', (socket) => {
+    console.log('Cliente conectado');
+
+    // Envía una notificación al cliente que se ha conectado
+    socket.emit('conexionExitosa', 'Nuevo Cliente Conectado');
+
+    socket.on('disconnect', () => {
+      console.log('Cliente desconectado');
+    });
+  });
+  // Cuando el socket reciba un evento "message"
   socket.on('message', (msg) => {
-    // console.log(`Message: ${msg}`);
-    //Enviaremos el mensaje recibido a otros clientes
-    socket.broadcast.emit('message', { body: msg.body, user:msg.user });
-  })
+    // Enviaremos el mensaje recibido a otros clientes
+    socket.broadcast.emit('message', { body: msg.body, user: msg.user });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Cliente desconectado');
+  });
 });
 
-server.listen(PORT);
-console.log("Server started on port: "+PORT);
+// Iniciar el servidor
+server.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
